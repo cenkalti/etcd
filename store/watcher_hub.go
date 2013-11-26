@@ -37,16 +37,15 @@ func newWatchHub(capacity int) *watcherHub {
 // If recursive is false, the first change after index at prefix will be sent to the event channel.
 // If index is zero, watch will start from the current index + 1.
 func (wh *watcherHub) watch(prefix string, recursive bool, index uint64) (*watcher, *etcdErr.Error) {
-	event, err := wh.EventHistory.scan(prefix, index)
+	var elem *list.Element // points to the watcher below
 
+	pastEvents, err := wh.EventHistory.scan(prefix, index)
 	if err != nil {
 		return nil, err
 	}
 
-	var elem *list.Element // points to the watcher below
-
 	w := &watcher{
-		EventChan: make(chan *Event, 1), // use a buffered channel
+		EventChan: make(chan *Event, len(pastEvents)+1), // use a buffered channel
 		Cancel: func() {
 			if l, ok := wh.watchers[prefix]; ok {
 				l.Remove(elem)
@@ -61,9 +60,9 @@ func (wh *watcherHub) watch(prefix string, recursive bool, index uint64) (*watch
 		sinceIndex: index,
 	}
 
-	if event != nil {
-		w.EventChan <- event
-		return w, nil
+	// queue past events first
+	for _, e := range pastEvents {
+		w.EventChan <- e
 	}
 
 	l, ok := wh.watchers[prefix]
