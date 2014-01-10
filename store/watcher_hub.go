@@ -57,8 +57,12 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index uint64) (*
 		return w, nil
 	}
 
+	println("locking from whatcherHub.watch")
 	wh.mutex.Lock()
-	defer wh.mutex.Unlock()
+	defer func() {
+		println("unlocking from whatcherHub.watch")
+		wh.mutex.Unlock()
+	}()
 
 	l, ok := wh.watchers[key]
 
@@ -78,8 +82,12 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index uint64) (*
 			return
 		}
 
+		println("locking from watcher.remove")
 		wh.mutex.Lock()
-		defer wh.mutex.Unlock()
+		defer func() {
+			println("unlocking from watcher.remove")
+			wh.mutex.Unlock()
+		}()
 
 		w.removed = true
 		l.Remove(elem)
@@ -124,8 +132,12 @@ func (wh *watcherHub) notify(e *Event) {
 }
 
 func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
+	println("locking from watcherHub.notifiyWatchers")
 	wh.mutex.Lock()
-	defer wh.mutex.Unlock()
+	defer func() {
+		println("unlocking from watcherHub.notifiyWatchers")
+		wh.mutex.Unlock()
+	}()
 
 	l, ok := wh.watchers[path]
 	if ok {
